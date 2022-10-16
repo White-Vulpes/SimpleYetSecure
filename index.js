@@ -1,55 +1,81 @@
 import express from 'express'
 import fetch from 'node-fetch'
+import bcrypt from 'bcrypt'
 
-var app = express()
+/*
 
-//SingIn Function
-app.get('/SignIn', async (req, res) => {
+Two APIs SignIn and SignUp
+Hasura GraphQL Engine is used for the project so you dont need to add a DB its already in cloud
+The passwords are hashed and stored in DB
+The Registration Number should be 15 character or more
+The cloud table is empty so please add some data using signUp function to check all edge cases
 
-  var user = "xyz@gmail.com"
-  var pass = "thefoxofawesomeness"                           //Dummy Data
-  var URL = "https://set-mantis-52.hasura.app/v1/graphql"
-  var query = JSON.stringify({query: `{
-    Users_users_by_pk(Email_ID: "${user}") {
-      Password
-      Username
-      Email_ID
+*/
+
+
+
+/*
+
+Seems like I did too much for a simple login page but It seemed too easy so here it is!!!! Hope U Like it
+
+*/
+
+var app = express();
+app.use(express.json());
+var URL = "https://white-vulpes.hasura.app/v1/graphql";
+
+app.post('/SignIn', async (req, res) => {
+  let query = `query MyQuery($registration_id: String!) {
+                SimpleLoginPage_students(where: {registration_id: {_eq: $registration_id}}) {
+                  name
+                  registration_id
+                  password
+                }
+              }`;
+  let variables = {registration_id: req.body.id};
+  let result = await fetcher(query, variables);
+  try{
+    if(result.data != null && result.data.SimpleLoginPage_students.length <= 0 ){
+      res.status(400).json({message: 'Wrong User iD'});
     }
-  }`});
-
- var data =  await fetcher(query);
-
- if(data.data.Users_users_by_pk == null){
-   res.send("You entered wrong email and password");
- }
- else if(data.data.Users_users_by_pk.Password.toString() == pass.toString()){
-   res.send("Congratulation You are Verified : " + data.data.Users_users_by_pk.Username);
- }
- else{
-   res.send("You entered wrong Password")
- }
-})
-
-//SingUp Function
-app.get('/SignUp', async (req, res) => {
-  var username = "rutiyoqpwo";
-  var password = "qwertyuiop";                       //Dummy Data
-  var email = "HelloJi@gmail.com"
-
-  var mutation_query = JSON.stringify({query: `mutation {
-  insert_Users_users_one(object: {Email_ID: "${email}", Password: "${password}", Username: "${username}"}) {
-    Email_ID
+    else if(result.data != null && result.data.SimpleLoginPage_students[0].registration_id === req.body.id){
+      if(await bcrypt.compare(req.body.password, result.data.SimpleLoginPage_students[0].password).then((result) => {return result;})) res.status(200).json(result.data.SimpleLoginPage_students[0]);
+      else res.status(400).json({message: 'Wrong Password'});
+    }
+    else{
+      res.status(400).json(result.errors);
+    }
+  }catch(e){
+    res.status(400).json({message: e.message});
   }
-}`});
-  await fetcher(mutation_query);
-  res.send("You Have been Registered");
 })
 
-//Function to fetch data from database
-var fetcher = async (q) => {
-  console.log(q);
-  var result = await fetch(URL,{method: 'POST',headers: {'x-hasura-admin-secret':'DW89IumpsvS15P0oOyXmAaj2nrk1D31N6wMMqayJ6ZYU7yq8kpd3S3HtIBp0fQLl'},body: q}).then((response) => response.json()).then((user) => { return user;});
-  console.log(result);
+app.post('/SignUp', async (req, res) => {
+  let query = `mutation MyMutation($name: String = "", $password: String = "", $registration_id: String = "") {
+                insert_SimpleLoginPage_students(objects: {name: $name, registration_id: $registration_id, password: $password}) {
+                  affected_rows
+                }
+              }`;
+  req.body.password = await bcrypt.hash(req.body.password, 10).then((hash) => {
+    return hash;
+  })
+  let variables = {name: req.body.name, password: req.body.password, registration_id: req.body.id};
+  let result = await fetcher(query, variables);
+  try{
+    if(result.data != null && result.data.insert_SimpleLoginPage_students.affected_rows >= 1){
+      res.status(200).json(result.data.insert_SimpleLoginPage_students);
+    }
+    else{
+      res.status(400).json(result.errors);
+    }
+  }catch(e){
+    res.status(400).json({message: e.message});
+  }
+})
+
+var fetcher = async (query, variables) => {
+  var result = await fetch(URL,{method: 'POST',headers: {'content-type':'application/json', 'x-hasura-admin-secret':'SimpleLoginPageDuhh'},body: JSON.stringify({query:query, variables:variables})}).then((response) => response.json()).then((user) => { return user;});
   return result;
 }
+
 app.listen(3981,() => {console.log("Server Running on 3981")})
