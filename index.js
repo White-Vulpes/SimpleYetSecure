@@ -1,6 +1,7 @@
 import express from 'express'
 import fetch from 'node-fetch'
 import bcrypt from 'bcrypt'
+import cors from 'cors'
 
 /*
 
@@ -22,6 +23,8 @@ Seems like I did too much for a simple login page but It seemed too easy so here
 
 var app = express();
 app.use(express.json());
+app.use(cors());
+
 var URL = "https://white-vulpes.hasura.app/v1/graphql";
 
 app.post('/SignIn', async (req, res) => {
@@ -36,17 +39,17 @@ app.post('/SignIn', async (req, res) => {
   let result = await fetcher(query, variables);
   try{
     if(result.data != null && result.data.SimpleLoginPage_students.length <= 0 ){
-      res.status(400).json({message: 'Wrong User iD'});
+      res.status(400).json({errors: 'Wrong User iD'});
     }
     else if(result.data != null && result.data.SimpleLoginPage_students[0].registration_id === req.body.id){
       if(await bcrypt.compare(req.body.password, result.data.SimpleLoginPage_students[0].password).then((result) => {return result;})) res.status(200).json(result.data.SimpleLoginPage_students[0]);
-      else res.status(400).json({message: 'Wrong Password'});
+      else res.status(400).json({errors: 'Wrong Password'});
     }
     else{
       res.status(400).json(result.errors);
     }
   }catch(e){
-    res.status(400).json({message: e.message});
+    res.status(400).json({errors: e.message});
   }
 })
 
@@ -78,4 +81,4 @@ var fetcher = async (query, variables) => {
   return result;
 }
 
-app.listen(3981,() => {console.log("Server Running on 3981")})
+app.listen(3981,'127.0.0.1', () => {console.log("Server Running on 3981")})
