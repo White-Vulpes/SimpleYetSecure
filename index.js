@@ -46,7 +46,7 @@ app.post('/SignIn', async (req, res) => {
       else res.status(400).json({errors: 'Wrong Password'});
     }
     else{
-      res.status(400).json(result.errors);
+      res.status(400).json(result.errors[0]);
     }
   }catch(e){
     res.status(400).json({errors: e.message});
@@ -69,10 +69,10 @@ app.post('/SignUp', async (req, res) => {
       res.status(200).json(result.data.insert_SimpleLoginPage_students);
     }
     else{
-      res.status(400).json(result.errors);
+      res.status(400).json(result.errors[0]);
     }
   }catch(e){
-    res.status(400).json({message: e.message});
+    res.status(400).json({errors: e.message});
   }
 })
 
